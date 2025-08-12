@@ -13,7 +13,7 @@ from snake import led_map
 WIDTH = len(led_map.MAP[0])
 HEIGHT = len(led_map.MAP)
 INITIAL_SNAKE_LENGTH = 3
-PLAYER_GAME_SPEED = 0.3  # Seconds per frame (lower is faster)
+PLAYER_GAME_SPEED = 0.1  # Seconds per frame (lower is faster)
 AGENT_GAME_SPEED = 0.05  # Seconds per frame (lower is faster)
 REFRESH_RATE = 1 / 30  # Frames per second
 END_SEQUENCE_FLASH_SPEED = 1
@@ -155,24 +155,13 @@ def update_game():
         snake.pop()  # Remove tail if no food eaten
 
 
-def is_safe(x, y, step=0, dir=None):
+def is_safe(x, y, step=0):
     """Checks if a given coordinate is safe (within bounds and not part of the snake body)."""
     # Check self-collision
     # For a simple check, we just ensure it's not in the current snake body.
     # A more advanced agent might consider the snake's future state.
     if (step < len(snake) and (x, y) in snake[: len(snake) - step]) or led_map.is_blocked(x, y):
         return False  # Otherwise, it's part of the snake body
-    # Avoid getting into a dead end
-    if dir is not None:
-        around_head = set(DIRECTIONS) - {(-1 * dir[0], -1 * dir[1])}
-        for dx, dy in around_head:
-            if is_safe(
-                get_next_head((x, y), (dx, dy))[0],
-                get_next_head((x, y), (dx, dy))[1],
-                step + 1,
-            ):
-                return True
-        return False
     return True
 
 
@@ -246,7 +235,7 @@ def agent_move_bfs():
             return
         for dx, dy in DIRECTIONS:
             next_x, next_y = get_next_head((x, y), (dx, dy))
-            if is_safe(next_x, next_y, len(path) - 1, (dx, dy)) and (next_x, next_y) not in visited:
+            if is_safe(next_x, next_y, len(path) - 1) and (next_x, next_y) not in visited:
                 queue.append((next_x, next_y, path + [(next_x, next_y)]))
     # If no path is found, snake will go in a safe direction until it finds food
     agent_move()
@@ -373,7 +362,10 @@ def game_loop():
                 agent_move_bfs()
                 update_game()
                 last_frame_update_count = frame_count
-            elif game_mode == GameMode.PLAYER:
+            elif (
+                game_mode == GameMode.PLAYER
+                and frame_count - last_frame_update_count >= PLAYER_GAME_SPEED / REFRESH_RATE
+            ):
                 handle_joystick_sync_direction()
                 update_game()
                 last_frame_update_count = frame_count
@@ -394,7 +386,9 @@ def game_loop():
         if req_game_mode != game_mode and req_game_mode is not None:
             game_mode = req_game_mode
             initialize_game()
+            end_sequence = None
             frame_count = 0
+            last_frame_update_count = 0
             continue
 
         time.sleep(REFRESH_RATE)
