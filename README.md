@@ -1,163 +1,105 @@
-# Snake Game
+# Snake Game for Raspberry Pi
 
-A Snake game implementation with LED matrix display and joystick support, designed for Raspberry Pi with NeoPixel LED strips.
+A snake game designed to run on Raspberry Pi with LED matrix display using CircuitPython and Pygame.
 
 ## Features
 
-- Classic Snake gameplay with AI agent
-- LED matrix visualization using NeoPixel strips
-- Joystick/gamepad support via pygame
-- BFS pathfinding algorithm for intelligent snake movement
-- Portal system for enhanced gameplay
-- Configurable game speed and LED colors
+- Classic snake gameplay
+- LED matrix display support
+- Joystick input support
+- AI agent mode with BFS pathfinding
+- Player mode with manual control
+- Automatic restart and daemon support
 
-## Requirements
+## Hardware Requirements
 
-- Python 3.8 or higher
-- Raspberry Pi (recommended for LED matrix support)
-- NeoPixel LED strip (100 LEDs)
-- Joystick/gamepad (optional)
-- SPI interface enabled on Raspberry Pi
+- Raspberry Pi (tested on Pi Zero)
+- LED matrix display
+- Joystick/controller (optional)
+- SPI interface for LED control
+
+## Dependencies
+
+- Python 3.7+
+- pygame
+- adafruit-circuitpython-neopixel-spi
+- adafruit-blinka
 
 ## Installation
 
-### From Source
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/snake-game.git
-cd snake-game
-```
-
-2. Install the package in development mode:
-```bash
-pip install -e .
-```
-
-3. Install development dependencies (optional):
-```bash
-pip install -e ".[dev]"
-```
-
-### Using pip
+### Local Development
 
 ```bash
-pip install snake-game
-```
+# Install dependencies
+pip install -r requirements.txt
 
-## Usage
-
-### Running the Game
-
-```bash
-# Run the game directly
+# Run the game
 python -m snake.main
-
-# Or use the installed script
-snake
 ```
 
-### Configuration
+### Deployment to Remote Host
 
-The game can be configured by modifying the constants in `snake/main.py`:
+1. **Build and deploy to pizero1.local:**
+   ```bash
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
 
-- `GAME_SPEED`: Controls game speed (lower = faster)
-- `INITIAL_SNAKE_LENGTH`: Starting length of the snake
-- `SNAKE_HEAD`, `SNAKE_BODY`, `FOOD`: LED colors for game elements
-- `NUM_PIXELS`: Number of LEDs in your strip
+2. **Manual deployment:**
+   ```bash
+   # Build package
+   python3 setup.py sdist bdist_wheel
 
-## Development
+   # Copy to remote host
+   scp dist/*.whl pizero1.local:~/
+   scp requirements.txt pizero1.local:~/
 
-### Setting up the development environment
+   # Install on remote host
+   ssh pizero1.local
+   pip3 install *.whl
+   ```
 
-1. Install development dependencies:
-```bash
-pip install -e ".[dev]"
-```
+## Daemon Management
 
-2. Install pre-commit hooks (optional):
-```bash
-pre-commit install
-```
-
-### Code Quality
-
-The project uses several tools to maintain code quality:
-
-- **Black**: Code formatting
-- **isort**: Import sorting
-- **flake8**: Linting
-- **mypy**: Type checking
-- **pytest**: Testing
-
-Run all quality checks:
+The game can run as a daemon using supervisord:
 
 ```bash
-# Format code
-black .
+# Check status
+sudo supervisorctl status snake_dance
 
-# Sort imports
-isort .
+# Start daemon
+sudo supervisorctl start snake_dance
 
-# Lint code
-flake8
+# Stop daemon
+sudo supervisorctl stop snake_dance
 
-# Type checking
-mypy .
+# Restart daemon
+sudo supervisorctl restart snake_dance
 
-# Run tests
-pytest
-
-# Run all checks
-black . && isort . && flake8 && mypy . && pytest
+# View logs
+tail -f /var/log/snake_dance.log
 ```
 
-### Building and Publishing
+## Game Controls
 
-Build the package:
-```bash
-python -m build
-```
+- **Joystick**: Control snake direction
+- **Button press**: Switch between AI and Player modes
+- **Game automatically restarts** when game over
 
-This will create distribution files in the `dist/` directory.
+## Configuration
 
-## Project Structure
-
-```
-snake/
-├── main.py          # Main game logic
-├── led_map.py       # LED matrix mapping and portals
-└── led_map_test.py  # Tests for LED mapping
-```
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run the quality checks
-5. Submit a pull request
+The LED matrix mapping is defined in `snake/led_map_v2.py`. Adjust the MAP array to match your specific LED matrix layout.
 
 ## Troubleshooting
 
-### LED Matrix Issues
+1. **Permission issues**: Ensure SPI is enabled and user has proper permissions
+2. **Display not working**: Check LED matrix connections and SPI configuration
+3. **Game not starting**: Check logs at `/var/log/snake_dance.log`
 
-- Ensure SPI is enabled on your Raspberry Pi
-- Check that the NeoPixel library is properly installed
-- Verify the LED count matches your hardware
+## Development
 
-### Joystick Issues
+To modify the game:
 
-- Make sure pygame is installed
-- Check that your joystick is recognized by the system
-- Try different joystick configurations in the code
-
-## Acknowledgments
-
-- Adafruit for the NeoPixel library
-- Pygame community for joystick support
-- The classic Snake game for inspiration
+1. Edit `snake/main.py` for game logic
+2. Edit `snake/led_map_v2.py` for LED mapping
+3. Rebuild and redeploy using `./deploy.sh`

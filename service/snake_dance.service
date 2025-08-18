@@ -1,0 +1,6 @@
+[Unit]
+Description=Snake Dance
+
+[Service]
+Type=simple
+ExecStart=/home/sina/projects/snake/venv/bin/python -m snake.main

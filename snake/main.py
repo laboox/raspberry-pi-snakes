@@ -7,10 +7,10 @@ import board
 import neopixel_spi as neopixel
 import pygame
 
-from snake import led_map
+from snake import led_map_v2 as led_map
 
 # Game configuration
-WIDTH = len(led_map.MAP[0])
+WIDTH = len(led_map.MAP[0])  # 14
 HEIGHT = len(led_map.MAP)
 INITIAL_SNAKE_LENGTH = 3
 PLAYER_GAME_SPEED = 0.1  # Seconds per frame (lower is faster)
@@ -394,7 +394,8 @@ def game_loop():
         time.sleep(REFRESH_RATE)
 
 
-if __name__ == "__main__":
+def main():
+    """Entry point for the snake game."""
     try:
         game_loop()
     except SystemExit:
@@ -404,3 +405,7 @@ if __name__ == "__main__":
         clear_screen()
         print(f"An error occurred: {e}")
         print("Exiting game.")
+
+
+if __name__ == "__main__":
+    main()
