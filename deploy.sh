@@ -35,13 +35,12 @@ ssh pizero1.local << 'EOF'
 
     # Install the snake game package
     pip install --upgrade pip
-    pip install -r requirements.txt
     pip install *.whl
 
     # Setup daemon
-    sudo cp snake_dance.ini /etc/supervisor/conf.d/
-    sudo mkdir -p /var/log/snake
-    sudo chown $USER:$USER /var/log/snake
+    sudo cp snake_dance.service ~/.config/systemd/user/snake_dance.service
+    # sudo mkdir -p /var/log/snake
+    # sudo chown $USER:$USER /var/log/snake
 
     # Start the service
     sudo systemctl enable snake_dance
