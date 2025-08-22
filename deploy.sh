@@ -41,7 +41,7 @@ ssh "$HOSTNAME" << 'EOF'
     sudo apt-get upgrade -y
 
     # Install Python dependencies
-    sudo apt-get install -y python3-pip python3-venv
+    sudo apt-get install -y python3-pip python3-venv python3-systemd
 
     # Create virtual environment
     python3 -m venv --system-site-packages venv

@@ -6,8 +6,15 @@ import time
 import board
 import neopixel_spi as neopixel
 import pygame
+import os
 
 from snake import led_map_v2 as led_map
+
+if os.getenv("AS_SERVICE", None) is not None:
+    import systemd
+    AS_SERVICE = True
+else:
+    AS_SERVICE = False
 
 # Game configuration
 WIDTH = len(led_map.MAP[0])  # 14
@@ -15,7 +22,7 @@ HEIGHT = len(led_map.MAP)
 INITIAL_SNAKE_LENGTH = 3
 PLAYER_GAME_SPEED = 0.1  # Seconds per frame (lower is faster)
 AGENT_GAME_SPEED = 0.05  # Seconds per frame (lower is faster)
-REFRESH_RATE = 1 / 30  # Frames per second
+REFRESH_RATE = 1 / 120  # Frames per second
 END_SEQUENCE_FLASH_SPEED = 1
 END_SEQUENCE_LENGTH = 5
 
@@ -361,15 +368,16 @@ def game_loop():
             ):
                 agent_move_bfs()
                 update_game()
+                draw_game()
                 last_frame_update_count = frame_count
             elif (
-                game_mode == GameMode.PLAYER
-                and frame_count - last_frame_update_count >= PLAYER_GAME_SPEED / REFRESH_RATE
+                game_mode == GameMode.PLAYER 
             ):
                 handle_joystick_sync_direction()
-                update_game()
-                last_frame_update_count = frame_count
-            draw_game()
+                if frame_count - last_frame_update_count >= PLAYER_GAME_SPEED / REFRESH_RATE:
+                    update_game()
+                    last_frame_update_count = frame_count
+                    draw_game()            
         else:
             if end_sequence is None:
                 frame_count = 0
