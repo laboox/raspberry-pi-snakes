@@ -20,9 +20,9 @@ else:
 WIDTH = len(led_map.MAP[0])  # 14
 HEIGHT = len(led_map.MAP)
 INITIAL_SNAKE_LENGTH = 3
-PLAYER_GAME_SPEED = 0.1  # Seconds per frame (lower is faster)
-AGENT_GAME_SPEED = 0.05  # Seconds per frame (lower is faster)
-REFRESH_RATE = 1 / 120  # Frames per second
+PLAYER_GAME_SPEED = 0.4  # Seconds per frame (lower is faster)
+AGENT_GAME_SPEED = 0.2  # Seconds per frame (lower is faster)
+REFRESH_RATE = 60  # Frames per second
 END_SEQUENCE_FLASH_SPEED = 1
 END_SEQUENCE_LENGTH = 5
 
@@ -309,15 +309,6 @@ def handle_joystick_game_mode() -> GameMode | None:
         return GameMode.AGENT
     return None
 
-
-def handle_joystick_sync_direction() -> Direction:
-    global direction
-
-    input_direction = handle_joystick_direction()
-    if input_direction is not None:
-        direction = input_direction
-
-
 def end_sequence():
     # Draw the game with snake flashing a few times
     for i in range(5):
@@ -353,53 +344,55 @@ class EndSequence:
 
 def game_loop():
     """Main game loop."""
+    global direction
+
 
     initialize_game()
     game_mode = GameMode.AGENT
-    frame_count = 0
-    last_frame_update_count = 0
+    last_update_tick = pygame.time.get_ticks()
     end_sequence = None
+    input_direction = None
+    game_clock = pygame.time.Clock()
+    
     while True:
-        frame_count += 1
         if not game_over:
             if (
                 game_mode == GameMode.AGENT
-                and frame_count - last_frame_update_count >= AGENT_GAME_SPEED / REFRESH_RATE
+                and pygame.time.get_ticks() - last_update_tick >= AGENT_GAME_SPEED * 1000
             ):
                 agent_move_bfs()
                 update_game()
                 draw_game()
-                last_frame_update_count = frame_count
+                last_update_tick = pygame.time.get_ticks()
             elif (
                 game_mode == GameMode.PLAYER 
             ):
-                handle_joystick_sync_direction()
-                if frame_count - last_frame_update_count >= PLAYER_GAME_SPEED / REFRESH_RATE:
+                input_direction = handle_joystick_direction()
+                if pygame.time.get_ticks() - last_update_tick >= PLAYER_GAME_SPEED * 1000:
+                    if input_direction is not None:
+                        direction = input_direction
                     update_game()
-                    last_frame_update_count = frame_count
-                    draw_game()            
+                    draw_game()
+                    last_update_tick = pygame.time.get_ticks()
         else:
             if end_sequence is None:
-                frame_count = 0
-                last_frame_update_count = 0
-                end_sequence = EndSequence(frame_count)
-            end_sequence.draw_frame(frame_count)
+                last_update_tick = pygame.time.get_ticks()
+                end_sequence = EndSequence(last_update_tick)
+            end_sequence.draw_frame((pygame.time.get_ticks() - last_update_tick) * REFRESH_RATE / 1000)
             if end_sequence.done:
                 initialize_game()
                 end_sequence = None
-                frame_count = 0
-                last_frame_update_count = 0
+                last_update_tick = pygame.time.get_ticks()
 
         req_game_mode = handle_joystick_game_mode()
         if req_game_mode != game_mode and req_game_mode is not None:
             game_mode = req_game_mode
             initialize_game()
             end_sequence = None
-            frame_count = 0
-            last_frame_update_count = 0
+            last_update_tick = pygame.time.get_ticks()
             continue
 
-        time.sleep(REFRESH_RATE)
+        game_clock.tick(REFRESH_RATE)
 
 
 def main():

@@ -27,7 +27,7 @@ echo "📤 Copying package to $HOSTNAME..."
 scp dist/*.whl "$HOSTNAME":~/snake-deploy/
 
 echo "🔧 Reinstalling snake-game..."
-ssh "$HOSTNAME" "~/snake-deploy/venv/bin/pip uninstall snake-game"
+ssh "$HOSTNAME" "~/snake-deploy/venv/bin/pip uninstall --yes snake-game"
 ssh "$HOSTNAME" "~/snake-deploy/venv/bin/pip install ~/snake-deploy/*.whl"
 
 echo "🔄 Restarting snake_dance service..."
