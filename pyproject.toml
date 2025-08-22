@@ -42,7 +42,7 @@ dev = [
 ]
 
 [project.scripts]
-snake = "snake.main"
+snake = "snake.main:main"
 
 [project.urls]
 Homepage = "https://github.com/laboox/raspberry-pi-snakes"

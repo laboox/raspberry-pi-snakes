@@ -50,7 +50,8 @@ pygame.init()
 
 def clear_screen():
     """Clears the console screen."""
-    pass
+    pixels.fill((0, 0, 0))
+    pixels.show()
 
 
 def initialize_game():
@@ -81,7 +82,6 @@ def place_food():
 
 def draw_game(snake_head_color=SNAKE_HEAD, snake_body_color=SNAKE_BODY, food_color=FOOD):
     """Draws the game board in the console."""
-    clear_screen()
     # print(f"Score: {score}")
     matrix = [DARK] * led_map.NUM_PIXELS
     for y in range(HEIGHT):
