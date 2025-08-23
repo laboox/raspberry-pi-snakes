@@ -6,15 +6,15 @@ import time
 import board
 import neopixel_spi as neopixel
 import pygame
-import os
 
 from snake import led_map_v2 as led_map
 
-if os.getenv("AS_SERVICE", None) is not None:
-    import systemd
-    AS_SERVICE = True
-else:
-    AS_SERVICE = False
+# if os.getenv("AS_SERVICE", None) is not None:
+#     import systemd
+
+#     AS_SERVICE = True
+# else:
+#     AS_SERVICE = False
 
 # Game configuration
 WIDTH = len(led_map.MAP[0])  # 14
@@ -309,6 +309,7 @@ def handle_joystick_game_mode() -> GameMode | None:
         return GameMode.AGENT
     return None
 
+
 def end_sequence():
     # Draw the game with snake flashing a few times
     for i in range(5):
@@ -331,8 +332,7 @@ class EndSequence:
         if self.done:
             return
         i = abs(
-            ((time_ms - self.init_time_ms) * 255 * 2 * END_SEQUENCE_FLASH_SPEED / 1000)
-            % (255 * 2)
+            ((time_ms - self.init_time_ms) * 255 * 2 * END_SEQUENCE_FLASH_SPEED / 1000) % (255 * 2)
             - 255
         )
         draw_game(
@@ -344,8 +344,7 @@ class EndSequence:
 
 def game_loop():
     """Main game loop."""
-    global direction, game_over
-
+    global direction
 
     initialize_game()
     game_mode = GameMode.AGENT
@@ -364,15 +363,13 @@ def game_loop():
                 update_game()
                 draw_game()
                 last_update_tick = pygame.time.get_ticks()
-            elif (
-                game_mode == GameMode.PLAYER 
-            ):
-                
+            elif game_mode == GameMode.PLAYER:
+
                 if (tmp_dir := handle_joystick_direction()) is not None:
                     input_direction = tmp_dir
                 if pygame.time.get_ticks() - last_update_tick >= PLAYER_GAME_SPEED * 1000:
                     if input_direction is not None:
-                        direction = input_direction 
+                        direction = input_direction
                         input_direction = None
                     update_game()
                     draw_game()
