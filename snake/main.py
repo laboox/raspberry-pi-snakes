@@ -20,8 +20,8 @@ else:
 WIDTH = len(led_map.MAP[0])  # 14
 HEIGHT = len(led_map.MAP)
 INITIAL_SNAKE_LENGTH = 3
-PLAYER_GAME_SPEED = 0.4  # Seconds per frame (lower is faster)
-AGENT_GAME_SPEED = 0.2  # Seconds per frame (lower is faster)
+PLAYER_GAME_SPEED = 0.2  # Seconds per frame (lower is faster)
+AGENT_GAME_SPEED = 0.07  # Seconds per frame (lower is faster)
 REFRESH_RATE = 60  # Frames per second
 END_SEQUENCE_FLASH_SPEED = 1
 END_SEQUENCE_LENGTH = 5
@@ -321,17 +321,17 @@ def end_sequence():
 
 
 class EndSequence:
-    def __init__(self, init_frame_count: int):
-        self.init_frame_count = init_frame_count
+    def __init__(self, init_time_ms: int):
+        self.init_time_ms = init_time_ms
         self.done = False
 
-    def draw_frame(self, frame_count: int):
-        if frame_count - self.init_frame_count > END_SEQUENCE_LENGTH / REFRESH_RATE:
+    def draw_frame(self, time_ms: int):
+        if time_ms - self.init_time_ms > END_SEQUENCE_LENGTH * 1000:
             self.done = True
         if self.done:
             return
         i = abs(
-            ((frame_count - self.init_frame_count) * END_SEQUENCE_FLASH_SPEED / REFRESH_RATE)
+            ((time_ms - self.init_time_ms) * 255 * 2 * END_SEQUENCE_FLASH_SPEED / 1000)
             % (255 * 2)
             - 255
         )
@@ -344,7 +344,7 @@ class EndSequence:
 
 def game_loop():
     """Main game loop."""
-    global direction
+    global direction, game_over
 
 
     initialize_game()
@@ -353,7 +353,7 @@ def game_loop():
     end_sequence = None
     input_direction = None
     game_clock = pygame.time.Clock()
-    
+
     while True:
         if not game_over:
             if (
@@ -367,10 +367,13 @@ def game_loop():
             elif (
                 game_mode == GameMode.PLAYER 
             ):
-                input_direction = handle_joystick_direction()
+                
+                if (tmp_dir := handle_joystick_direction()) is not None:
+                    input_direction = tmp_dir
                 if pygame.time.get_ticks() - last_update_tick >= PLAYER_GAME_SPEED * 1000:
                     if input_direction is not None:
-                        direction = input_direction
+                        direction = input_direction 
+                        input_direction = None
                     update_game()
                     draw_game()
                     last_update_tick = pygame.time.get_ticks()
@@ -378,7 +381,7 @@ def game_loop():
             if end_sequence is None:
                 last_update_tick = pygame.time.get_ticks()
                 end_sequence = EndSequence(last_update_tick)
-            end_sequence.draw_frame((pygame.time.get_ticks() - last_update_tick) * REFRESH_RATE / 1000)
+            end_sequence.draw_frame(pygame.time.get_ticks())
             if end_sequence.done:
                 initialize_game()
                 end_sequence = None
