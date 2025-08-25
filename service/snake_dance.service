@@ -3,7 +3,7 @@ Description=Snake Dance
 
 [Service]
 Type=simple
-ExecStart=/home/sina/projects/snake/venv/bin/python -m snake.main
+ExecStart=/home/sina/projects/snake/venv/bin/snake
 Environment=PYTHONUNBUFFERED=1
 Restart=on-failure
 

@@ -7,7 +7,7 @@ set -e
 if [ $# -eq 0 ]; then
     echo "❌ Error: Hostname argument is required"
     echo "Usage: $0 <hostname>"
-    echo "Example: $0 pizero1.local"
+    echo "Example: $0 raspberrypi.local"
     exit 1
 fi
 
@@ -51,9 +51,9 @@ ssh "$HOSTNAME" << 'EOF'
     pip install --upgrade pip
 
     # Install Blinka dependencies
-    # pip3 install --upgrade adafruit-python-shell
-    # wget https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/raspi-blinka.py
-    # yes no | sudo -E env PATH=$PATH python3 raspi-blinka.py
+    pip3 install --upgrade adafruit-python-shell
+    wget https://raw.githubusercontent.com/adafruit/Raspberry-Pi-Installer-Scripts/master/raspi-blinka.py
+    yes no | sudo -E env PATH=$PATH python3 raspi-blinka.py
 
     # Install the snake game package
     pip install *.whl
@@ -61,8 +61,6 @@ ssh "$HOSTNAME" << 'EOF'
     # Setup daemon
     sed -i "s#/home/sina/projects/snake/venv/bin#$HOME/snake-deploy/venv/bin#g" snake_dance.service
     cp snake_dance.service ~/.config/systemd/user/snake_dance.service
-    # sudo mkdir -p /var/log/snake
-    # sudo chown $USER:$USER /var/log/snake
 
     # Start the service
     systemctl --user enable snake_dance
@@ -80,4 +78,3 @@ EOF
 
 echo "🎉 Deployment complete! Snake game is now running on $HOSTNAME"
 echo "📝 To check status: ssh $HOSTNAME 'systemctl --user status snake_dance'"
-echo "📝 To view logs: ssh $HOSTNAME 'tail -f /var/log/snake_dance.log'"

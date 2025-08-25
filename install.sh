@@ -10,7 +10,7 @@ set -e
 if [ $# -eq 0 ]; then
     echo "❌ Error: Hostname argument is required"
     echo "Usage: $0 <hostname>"
-    echo "Example: $0 pizero1.local"
+    echo "Example: $0 raspberrypi.local"
     exit 1
 fi
 

@@ -1,6 +1,7 @@
 import collections
 import enum
 import random
+import signal
 import time
 
 import board
@@ -20,9 +21,9 @@ from snake import led_map_v2 as led_map
 WIDTH = len(led_map.MAP[0])  # 14
 HEIGHT = len(led_map.MAP)
 INITIAL_SNAKE_LENGTH = 3
-PLAYER_GAME_SPEED = 0.2  # Seconds per frame (lower is faster)
+PLAYER_GAME_SPEED = 0.15  # Seconds per frame (lower is faster)
 AGENT_GAME_SPEED = 0.07  # Seconds per frame (lower is faster)
-REFRESH_RATE = 60  # Frames per second
+REFRESH_RATE = 120  # Frames per second
 END_SEQUENCE_FLASH_SPEED = 1
 END_SEQUENCE_LENGTH = 5
 
@@ -395,8 +396,14 @@ def game_loop():
         game_clock.tick(REFRESH_RATE)
 
 
+def exit_game():
+    clear_screen()
+    exit(0)
+
+
 def main():
     """Entry point for the snake game."""
+    signal.signal(signal.SIGTERM, exit_game)
     try:
         game_loop()
     except SystemExit:
