@@ -1,11 +1,11 @@
 # Snake Game for Raspberry Pi
 
-A snake game designed to run on Raspberry Pi with LED matrix display using CircuitPython and Pygame.
+A snake game designed to run on Raspberry Pi with an addressable LED matrix display using CircuitPython and Pygame.
 
 ## Features
 
 - Classic snake gameplay
-- LED matrix display support
+- Addressable LED display support
 - Joystick input support
 - AI agent mode with BFS pathfinding
 - Player mode with manual control
@@ -13,8 +13,8 @@ A snake game designed to run on Raspberry Pi with LED matrix display using Circu
 
 ## Hardware Requirements
 
-- Raspberry Pi (tested on Pi Zero)
-- LED matrix display
+- Raspberry Pi (tested on Pi Zero 2W and Pi 5)
+- Addressable LEDs compatible with NeoPixel
 - Joystick/controller (optional)
 - SPI interface for LED control
 
@@ -30,60 +30,27 @@ A snake game designed to run on Raspberry Pi with LED matrix display using Circu
 ### Local Development
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Create a virtual environment
+python -m venv venv --system-site-packages
 
-# Run the game
-python -m snake.main
+# Install build
+pip install build
 ```
 
 ### Deployment to Remote Host
 
-1. **Build and deploy to pizero1.local:**
+1. **Build and deploy to host:**
    ```bash
+   HOST=raspberrypi.local
    chmod +x deploy.sh
-   ./deploy.sh
+   ./deploy.sh $HOST
    ```
-
-2. **Manual deployment:**
-   ```bash
-   # Build package
-   python3 setup.py sdist bdist_wheel
-
-   # Copy to remote host
-   scp dist/*.whl pizero1.local:~/
-   scp requirements.txt pizero1.local:~/
-
-   # Install on remote host
-   ssh pizero1.local
-   pip3 install *.whl
-   ```
-
-## Daemon Management
-
-The game can run as a daemon using supervisord:
-
-```bash
-# Check status
-sudo supervisorctl status snake_dance
-
-# Start daemon
-sudo supervisorctl start snake_dance
-
-# Stop daemon
-sudo supervisorctl stop snake_dance
-
-# Restart daemon
-sudo supervisorctl restart snake_dance
-
-# View logs
-tail -f /var/log/snake_dance.log
-```
 
 ## Game Controls
 
+- **Start button**: Switch to Player mode
+- **Back button**: Switch to AI mode
 - **Joystick**: Control snake direction
-- **Button press**: Switch between AI and Player modes
 - **Game automatically restarts** when game over
 
 ## Configuration
@@ -92,9 +59,11 @@ The LED matrix mapping is defined in `snake/led_map_v2.py`. Adjust the MAP array
 
 ## Troubleshooting
 
-1. **Permission issues**: Ensure SPI is enabled and user has proper permissions
-2. **Display not working**: Check LED matrix connections and SPI configuration
-3. **Game not starting**: Check logs at `/var/log/snake_dance.log`
+1. **Installation**: Install Blinka library properly using [this guide](https://learn.adafruit.com/circuitpython-on-raspberrypi-linux/installing-circuitpython-on-raspberry-pi) and not pip
+2. **Disable audio on SPI**: If you are using SPI, disable Audio
+3. **Permission issues**: Ensure SPI is enabled and user has proper permissions
+4. **Display not working**: Check LED matrix connections and SPI configuration
+5. **Game not starting**: Check journalctl using `journalctl --user-unit snake_dance`
 
 ## Development
 
@@ -102,4 +71,5 @@ To modify the game:
 
 1. Edit `snake/main.py` for game logic
 2. Edit `snake/led_map_v2.py` for LED mapping
-3. Rebuild and redeploy using `./deploy.sh`
+3. Rebuild and redeploy using `./install.sh $HOSTNAME`
+4. Install Pre-commit before making a PR `pip install pre-commit && pre-commit install`

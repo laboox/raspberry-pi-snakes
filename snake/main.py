@@ -10,13 +10,6 @@ import pygame
 
 from snake import led_map_v2 as led_map
 
-# if os.getenv("AS_SERVICE", None) is not None:
-#     import systemd
-
-#     AS_SERVICE = True
-# else:
-#     AS_SERVICE = False
-
 # Game configuration
 WIDTH = len(led_map.MAP[0])  # 14
 HEIGHT = len(led_map.MAP)
