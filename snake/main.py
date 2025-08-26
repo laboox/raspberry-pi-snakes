@@ -2,7 +2,6 @@ import collections
 import enum
 import random
 import signal
-import time
 
 import board
 import neopixel_spi as neopixel
@@ -20,15 +19,18 @@ REFRESH_RATE = 120  # Frames per second
 END_SEQUENCE_FLASH_SPEED = 1
 END_SEQUENCE_LENGTH = 5
 
-DARK = (2, 4, 0)
-SNAKE_HEAD = (128, 0, 128)
-SNAKE_BODY = (0, 0, 128)
-FOOD = (255, 0, 0)
-
-# Directions
+# Types
 Direction = collections.namedtuple("Direction", ["x", "y"])
 Point = collections.namedtuple("Point", ["x", "y"])
+Color = collections.namedtuple("Color", ["g", "r", "b"])
 
+# Color constants
+DARK = Color(2, 4, 0)
+SNAKE_HEAD = Color(128, 0, 128)
+SNAKE_BODY = Color(0, 0, 128)
+FOOD = Color(255, 0, 0)
+
+# Direction constants
 UP = Direction(0, -1)
 DOWN = Direction(0, 1)
 LEFT = Direction(-1, 0)
@@ -40,9 +42,9 @@ snake: list[Point] = []
 food: Point = None
 direction = RIGHT  # Initial direction
 input_direction = RIGHT
-score = 0
 game_over = False
 
+# Services Initialization
 PIXEL_ORDER = neopixel.GRB
 spi = board.SPI()
 pixels = neopixel.NeoPixel_SPI(spi, led_map.NUM_PIXELS, pixel_order=PIXEL_ORDER, auto_write=False)
@@ -57,7 +59,7 @@ def clear_screen():
 
 def initialize_game():
     """Initializes or resets the game state."""
-    global snake, direction, score, game_over
+    global snake, direction, game_over
 
     snake = []
     # Place snake in the middle, starting with INITIAL_SNAKE_LENGTH
@@ -65,7 +67,6 @@ def initialize_game():
         snake.append((WIDTH // 2 - i, HEIGHT // 2))
 
     direction = RIGHT
-    score = 0
     game_over = False
     place_food()
 
@@ -81,9 +82,12 @@ def place_food():
             break
 
 
-def draw_game(snake_head_color=SNAKE_HEAD, snake_body_color=SNAKE_BODY, food_color=FOOD):
+def draw_game(
+    snake_head_color: Color = SNAKE_HEAD,
+    snake_body_color: Color = SNAKE_BODY,
+    food_color: Color = FOOD,
+):
     """Draws the game board in the console."""
-    # print(f"Score: {score}")
     matrix = [DARK] * led_map.NUM_PIXELS
     for y in range(HEIGHT):
         for x in range(WIDTH):
@@ -99,13 +103,13 @@ def draw_game(snake_head_color=SNAKE_HEAD, snake_body_color=SNAKE_BODY, food_col
     pixels.show()
 
 
-def get_next_head(head, direction):
-    new_head = (head[0] + direction[0], head[1] + direction[1])
+def get_next_head(head: Point, direction: Direction) -> Point:
+    new_head = Point(head.x + direction.x, head.y + direction.y)
     # Check rotations
-    if new_head[0] < 0:
-        new_head = (WIDTH - 1, new_head[1])
-    if new_head[0] >= WIDTH:
-        new_head = (0, new_head[1])
+    if new_head.x < 0:
+        new_head = Point(WIDTH - 1, new_head.y)
+    if new_head.x >= WIDTH:
+        new_head = Point(0, new_head.y)
     # Check for portals
     if head in led_map.PORTALS and direction == UP:
         new_head = led_map.PORTALS[head]
@@ -114,21 +118,21 @@ def get_next_head(head, direction):
 
 def update_game():
     """Updates the game state for the next frame."""
-    global score, game_over, direction
+    global game_over, direction
     if game_over:
         return
 
-    head_x, head_y = snake[0]
+    head = snake[0]
     new_direction = direction
     possible_directions = []
     for directions in set(DIRECTIONS) - {direction}:
         if is_safe(
-            get_next_head(snake[0], directions)[0],
-            get_next_head(snake[0], directions)[1],
+            get_next_head(head, directions).x,
+            get_next_head(head, directions).y,
         ):
             possible_directions.append(directions)
-    while (next_head := get_next_head(snake[0], new_direction)) and led_map.is_blocked(
-        next_head[0], next_head[1]
+    while (next_head := get_next_head(head, new_direction)) and led_map.is_blocked(
+        next_head.x, next_head.y
     ):
         if len(possible_directions) == 0:
             game_over = True
@@ -137,9 +141,9 @@ def update_game():
         possible_directions.remove(new_direction)
 
     direction = new_direction
-    new_head = get_next_head(snake[0], direction)
-    if new_head in led_map.PORTALS and (head_x, head_y) in led_map.PORTALS:
-        direction = (direction[0], direction[1] * -1)
+    new_head = get_next_head(head, direction)
+    if new_head in led_map.PORTALS and head in led_map.PORTALS:
+        direction = Direction(direction.x, direction.y * -1)
 
     # Check for self-collision
     if new_head in snake:
@@ -150,18 +154,21 @@ def update_game():
 
     # Check if food was eaten
     if new_head == food:
-        score += 1
         place_food()  # Place new food
     else:
         snake.pop()  # Remove tail if no food eaten
 
 
-def is_safe(x, y, step=0):
+def is_safe(point: Point, step=0):
     """Checks if a given coordinate is safe (within bounds and not part of the snake body)."""
     # Check self-collision
     # For a simple check, we just ensure it's not in the current snake body.
     # A more advanced agent might consider the snake's future state.
-    if (step < len(snake) and (x, y) in snake[: len(snake) - step]) or led_map.is_blocked(x, y):
+    if (
+        step < len(snake)
+        and point in snake[: len(snake) - step]
+        or led_map.is_blocked(point.x, point.y)
+    ):
         return False  # Otherwise, it's part of the snake body
     return True
 
@@ -170,45 +177,48 @@ def agent_move():
     """
     Determines the next move for the AI agent.
     Simple greedy strategy: move towards food, avoid immediate collisions.
+
+    WARNING: This is a simple greedy strategy and does not consider the
+    snake's future state, wrapping around the map or portals.
     """
     global direction
-    head_x, head_y = snake[0]
+    head = snake[0]
     food_x, food_y = food
 
     # Prioritize moves that reduce distance to food
     possible_moves_with_distances = []
 
-    for dx, dy in DIRECTIONS:
-        next_x, next_y = get_next_head(snake[0], (dx, dy))
+    for dir in DIRECTIONS:
+        next_head = get_next_head(head, dir)
 
         # Avoid reversing directly into the snake's body
-        if len(snake) > 1 and (next_x, next_y) == snake[1]:
+        if len(snake) > 1 and next_head == snake[1]:
             continue
 
-        if is_safe(next_x, next_y):
-            distance = abs(next_x - food_x) + abs(next_y - food_y)
-            possible_moves_with_distances.append((distance, (dx, dy)))
+        if is_safe(next_head):
+            distance = abs(next_head.x - food_x) + abs(next_head.y - food_y)
+            possible_moves_with_distances.append((distance, dir))
 
     # Sort moves by distance (ascending)
     possible_moves_with_distances.sort()
 
     # Try to pick the best safe move
-    for _, (dx, dy) in possible_moves_with_distances:
+    for _, dir in possible_moves_with_distances:
         # The is_safe check here is crucial.
         # We need to ensure the *wrapped* next_x, next_y is safe.
         # The is_safe function itself now only checks for self-collision.
-        if is_safe((head_x + dx) % WIDTH, (head_y + dy) % HEIGHT):
-            direction = (dx, dy)
+        if is_safe(get_next_head(head, dir)):
+            direction = dir
             return
 
     # Fallback: if no 'best' move is found (e.g., trapped), try any safe move
     # This part should ideally be unreachable with a good
     # 'is_safe' and 'possible_moves_with_distances'
     # but acts as a safeguard.
-    for dx, dy in DIRECTIONS:
+    for dir in DIRECTIONS:
         # Again, apply wrapping before checking safety
-        if is_safe((head_x + dx) % WIDTH, (head_y + dy) % HEIGHT):
-            direction = (dx, dy)
+        if is_safe(get_next_head(head, dir)):
+            direction = dir
             return
 
     # If absolutely no safe move is found (snake is completely trapped),
@@ -221,32 +231,25 @@ def agent_move():
 def agent_move_bfs():
     global direction
 
-    head_x, head_y = snake[0]
-    if snake[0] == food:
+    head = snake[0]
+    if head == food:
         return
-    queue = [(head_x, head_y, [(head_x, head_y)])]
+    queue = [(head, [head])]
     visited = set()
     while queue:
-        x, y, path = queue.pop(0)
-        if (x, y) in visited:
+        head, path = queue.pop(0)
+        if head in visited:
             continue
-        visited.add((x, y))
-        if (x, y) == food:
-            direction = (path[1][0] - path[0][0], path[1][1] - path[0][1])
+        visited.add(head)
+        if head == food:
+            direction = Direction(path[1].x - path[0].x, path[1].y - path[0].y)
             return
-        for dx, dy in DIRECTIONS:
-            next_x, next_y = get_next_head((x, y), (dx, dy))
-            if is_safe(next_x, next_y, len(path) - 1) and (next_x, next_y) not in visited:
-                queue.append((next_x, next_y, path + [(next_x, next_y)]))
+        for dir in DIRECTIONS:
+            next_head = get_next_head(head, dir)
+            if is_safe(next_head, len(path) - 1) and next_head not in visited:
+                queue.append((next_head, path + [next_head]))
     # If no path is found, snake will go in a safe direction until it finds food
     agent_move()
-    return
-
-
-def print_snake():
-    for x, y in reversed(snake):
-        print(f"({x}, {y})", end=" ")
-    print()
 
 
 class GameMode(enum.StrEnum):
@@ -256,10 +259,6 @@ class GameMode(enum.StrEnum):
 
 def handle_joystick_direction() -> Direction | None:
     input_direction = None
-    # # Use pygame joystick to read the direction
-    # for event in pygame.event.get(pump=True):
-    #     if event.type == pygame.JOYDEVICEADDED:
-    #         pygame.joystick.Joystick(event.device_index).init()
     if pygame.joystick.get_count() == 0:
         return  # Wait for joystick to be connected
     joystick = pygame.joystick.Joystick(0)
@@ -304,17 +303,6 @@ def handle_joystick_game_mode() -> GameMode | None:
     return None
 
 
-def end_sequence():
-    # Draw the game with snake flashing a few times
-    for i in range(5):
-        for i in list(range(255)) + list(range(255, 0, -1)):
-            draw_game((0, 0, i), (0, 0, i), (0, 0, 0))
-            time.sleep(END_SEQUENCE_FLASH_SPEED / (255 * 2))
-
-    # Draw the game with snake flashing a few times
-    print("Game over")
-
-
 class EndSequence:
     def __init__(self, init_time_ms: int):
         self.init_time_ms = init_time_ms
@@ -330,7 +318,7 @@ class EndSequence:
             - 255
         )
         draw_game(
-            (0, 0, i),
+            (i, 0, i),
             (0, 0, i),
             FOOD,
         )
@@ -358,7 +346,6 @@ def game_loop():
                 draw_game()
                 last_update_tick = pygame.time.get_ticks()
             elif game_mode == GameMode.PLAYER:
-
                 if (tmp_dir := handle_joystick_direction()) is not None:
                     input_direction = tmp_dir
                 if pygame.time.get_ticks() - last_update_tick >= PLAYER_GAME_SPEED * 1000:
