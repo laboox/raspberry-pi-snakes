@@ -64,7 +64,7 @@ def initialize_game():
     snake = []
     # Place snake in the middle, starting with INITIAL_SNAKE_LENGTH
     for i in range(INITIAL_SNAKE_LENGTH):
-        snake.append((WIDTH // 2 - i, HEIGHT // 2))
+        snake.append(Point(WIDTH // 2 - i, HEIGHT // 2))
 
     direction = RIGHT
     game_over = False
@@ -78,7 +78,7 @@ def place_food():
         x = random.randint(0, WIDTH - 1)
         y = random.randint(0, HEIGHT - 1)
         if (x, y) not in snake and not led_map.is_blocked(x, y):
-            food = (x, y)
+            food = Point(x, y)
             break
 
 
@@ -91,11 +91,12 @@ def draw_game(
     matrix = [DARK] * led_map.NUM_PIXELS
     for y in range(HEIGHT):
         for x in range(WIDTH):
-            if (x, y) == snake[0]:
+            point = Point(x, y)
+            if point == snake[0]:
                 matrix[led_map.MAP[y][x]] = snake_head_color  # Snake head
-            elif (x, y) in snake:
+            elif point in snake:
                 matrix[led_map.MAP[y][x]] = snake_body_color  # Snake body
-            elif (x, y) == food:
+            elif point == food:
                 matrix[led_map.MAP[y][x]] = food_color  # Food
 
     for i in range(led_map.NUM_PIXELS):
@@ -112,7 +113,7 @@ def get_next_head(head: Point, direction: Direction) -> Point:
         new_head = Point(0, new_head.y)
     # Check for portals
     if head in led_map.PORTALS and direction == UP:
-        new_head = led_map.PORTALS[head]
+        new_head = Point(*led_map.PORTALS[head])
     return new_head
 
 
@@ -126,10 +127,7 @@ def update_game():
     new_direction = direction
     possible_directions = []
     for directions in set(DIRECTIONS) - {direction}:
-        if is_safe(
-            get_next_head(head, directions).x,
-            get_next_head(head, directions).y,
-        ):
+        if is_safe(get_next_head(head, directions)):
             possible_directions.append(directions)
     while (next_head := get_next_head(head, new_direction)) and led_map.is_blocked(
         next_head.x, next_head.y
@@ -159,7 +157,7 @@ def update_game():
         snake.pop()  # Remove tail if no food eaten
 
 
-def is_safe(point: Point, step=0):
+def is_safe(point: Point, step: int = 0) -> bool:
     """Checks if a given coordinate is safe (within bounds and not part of the snake body)."""
     # Check self-collision
     # For a simple check, we just ensure it's not in the current snake body.
@@ -234,7 +232,7 @@ def agent_move_bfs():
     head = snake[0]
     if head == food:
         return
-    queue = [(head, [head])]
+    queue: list[tuple[Point, list[Point]]] = [(head, [head])]
     visited = set()
     while queue:
         head, path = queue.pop(0)
@@ -389,10 +387,6 @@ def main():
     except SystemExit:
         clear_screen()
         print("Thanks for playing Snake!")
-    except Exception as e:
-        clear_screen()
-        print(f"An error occurred: {e}")
-        print("Exiting game.")
 
 
 if __name__ == "__main__":
