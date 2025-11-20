@@ -24,7 +24,7 @@ classifiers = [
     "Topic :: Games/Entertainment",
     "Topic :: System :: Hardware",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "pygame>=2.0.0",
     "adafruit-circuitpython-neopixel-spi>=1.0.0",
@@ -39,6 +39,9 @@ dev = [
     "mypy>=1.0.0",
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+]
+ml = [
+    "tensorflow>=2.16.0",
 ]
 
 [project.scripts]
@@ -106,6 +109,7 @@ module = [
     "pygame.*",
     "neopixel_spi.*",
     "board.*",
+    "tensorflow.*",
 ]
 ignore_missing_imports = true
 
