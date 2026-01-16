@@ -86,10 +86,10 @@ class SnakeGame:
             new_direction = random.choice(possible_directions)
             possible_directions.remove(new_direction)
 
-        direction = new_direction
-        new_head = get_next_head(head, direction)
-        if new_head in led_map.PORTALS and head in led_map.PORTALS:
-            direction = Direction(direction.x, direction.y * -1)
+        self.direction = new_direction
+        new_head = get_next_head(head, self.direction)
+        if new_head in led_map.PORTALS and head in led_map.PORTALS and self.direction == UP:
+            self.direction = Direction(self.direction.x, self.direction.y * -1)
 
         # Check for self-collision
         if new_head in self.snake:
