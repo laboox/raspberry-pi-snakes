@@ -9,6 +9,7 @@ from snake import led_map_v2 as led_map
 from snake import snake_game
 from snake.agent import agent_move_bfs
 from snake.const import DOWN, LEFT, RIGHT, UP
+from snake.ml_agent import agent as ml_agent
 from snake.types import Color, Direction, Point
 
 SNAKE_DANCE_MODE = os.environ.get("SNAKE_DANCE_MODE", "RASPBERRYPI")
@@ -109,6 +110,7 @@ def draw_game(
 
 class GameMode(enum.Enum):
     AGENT = "agent"
+    ML_AGENT = "ml_agent"
     PLAYER = "player"
 
 
@@ -198,11 +200,14 @@ def game_loop():
         pygame.event.pump()
         if not game.game_over:
             if (
-                game_mode == GameMode.AGENT
-                and pygame.time.get_ticks() - last_update_tick >= AGENT_GAME_SPEED * 1000
-            ):
-                if (tmp_dir := agent_move_bfs(game)) is not None:
-                    game.set_next_direction(tmp_dir)
+                game_mode == GameMode.AGENT or game_mode == GameMode.ML_AGENT
+            ) and pygame.time.get_ticks() - last_update_tick >= AGENT_GAME_SPEED * 1000:
+                if game_mode == GameMode.AGENT:
+                    if (tmp_dir := agent_move_bfs(game)) is not None:
+                        game.set_next_direction(tmp_dir)
+                elif game_mode == GameMode.ML_AGENT:
+                    if (tmp_dir := ml_agent.agent_move(game)) is not None:
+                        game.set_next_direction(tmp_dir)
                 game.update_game()
                 draw_game(game)
                 last_update_tick = pygame.time.get_ticks()
