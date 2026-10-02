@@ -6,13 +6,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from snake import led_map_v2 as led_map
-from snake import snake_game
-from snake.const import DIRECTIONS
+from snake.const import DIRECTIONS, HEIGHT, WIDTH
+from snake.games.snake import snake_game
 from snake.types import Direction
-
-WIDTH = len(led_map.MAP[0])  # 14
-HEIGHT = len(led_map.MAP)  # 8
 
 
 def get_state(game: snake_game.SnakeGame):
@@ -97,9 +93,9 @@ def _load_model() -> DQN:
     return _model
 
 
-def agent_move(game: snake_game.SnakeGame) -> Optional[Direction]:
+def snake_ml_agent_move(game: snake_game.SnakeGame) -> Optional[Direction]:
     """
-    Determines the next move for the ML agent using the trained DQN model.
+    Determines the next move for the snake ML agent using the trained DQN model.
 
     Args:
         game: The current SnakeGame instance

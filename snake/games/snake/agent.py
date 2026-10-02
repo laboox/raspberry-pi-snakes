@@ -1,17 +1,19 @@
-from snake import snake_game
 from snake.const import DIRECTIONS
+from snake.games.snake import snake_game
 from snake.types import Direction, Point
 
 
-def agent_move(game: snake_game.SnakeGame) -> Direction | None:
+def snake_agent_move(game: snake_game.SnakeGame) -> Direction | None:
     """
-    Determines the next move for the AI agent.
+    Determines the next move for the snake AI agent using a greedy heuristic.
     Simple greedy strategy: move towards food, avoid immediate collisions.
 
     WARNING: This is a simple greedy strategy and does not consider the
     snake's future state, wrapping around the map or portals.
     """
     head = game.snake_head
+    if head is None or game.food is None:
+        return None
     food_x, food_y = game.food.x, game.food.y
 
     # Prioritize moves that reduce distance to food
@@ -50,15 +52,13 @@ def agent_move(game: snake_game.SnakeGame) -> Direction | None:
 
     # If absolutely no safe move is found (snake is completely trapped),
     # the game will end on the next update_game() call due to collision.
-    # For the agent, this means it has no valid move.
-    # In a real game, this might trigger a specific "stuck" state or game over.
-    # Here, we just let the game_over logic handle it.
+    return None
 
 
-def agent_move_bfs(game: snake_game.SnakeGame) -> Direction | None:
-
+def snake_agent_move_bfs(game: snake_game.SnakeGame) -> Direction | None:
+    """Determines the next move for the snake AI agent using BFS shortest path."""
     head = game.snake_head
-    if head == game.food:
+    if head is None or game.food is None or head == game.food:
         return None
     queue: list[tuple[Point, Direction, int]] = [(head, Direction(0, 0), 0)]
     visited = set()
@@ -76,4 +76,4 @@ def agent_move_bfs(game: snake_game.SnakeGame) -> Direction | None:
                     (next_head, dir if start_dir == Direction(0, 0) else start_dir, steps + 1)
                 )
     # If no path is found, snake will go in a safe direction until it finds food
-    return agent_move(game)
+    return snake_agent_move(game)

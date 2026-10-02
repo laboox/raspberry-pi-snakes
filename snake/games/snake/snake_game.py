@@ -1,12 +1,13 @@
+from __future__ import annotations
+
 import random
+from typing import Any
 
 from snake import led_map_v2 as led_map
-from snake.const import DIRECTIONS, RIGHT, UP
-from snake.types import Direction, Point
-
-WIDTH = len(led_map.MAP[0])  # 14
-HEIGHT = len(led_map.MAP)  # 8
-INITIAL_SNAKE_LENGTH = 3
+from snake.const import DIRECTIONS, HEIGHT, RIGHT, UP, WIDTH
+from snake.games.base_game import BaseGame
+from snake.games.snake.const import FOOD, INITIAL_SNAKE_LENGTH, SNAKE_BODY, SNAKE_HEAD
+from snake.types import Color, Direction, Point
 
 
 def get_next_head(head: Point, direction: Direction) -> Point:
@@ -22,23 +23,35 @@ def get_next_head(head: Point, direction: Direction) -> Point:
     return new_head
 
 
-class SnakeGame:
-    def __init__(self):
+class SnakeGame(BaseGame):
+    def __init__(self) -> None:
         self.snake: list[Point] = []
-        self.food: Point = None
+        self.food: Point | None = None
         self.direction: Direction = RIGHT
-        self.game_over: bool = False
+        self._game_over: bool = False
 
-    def initialize_game(self):
+    @property
+    def name(self) -> str:
+        return "Snake"
+
+    @property
+    def game_over(self) -> bool:
+        return self._game_over
+
+    @game_over.setter
+    def game_over(self, value: bool) -> None:
+        self._game_over = value
+
+    def initialize_game(self) -> None:
         self.snake = []
         # Place snake in the middle, starting with INITIAL_SNAKE_LENGTH
         for i in range(INITIAL_SNAKE_LENGTH):
             self.snake.append(Point(WIDTH // 2 - i, HEIGHT // 2))
         self.direction = RIGHT
-        self.game_over = False
+        self._game_over = False
         self._place_food()
 
-    def _place_food(self):
+    def _place_food(self) -> None:
         # Places food at a random position, ensuring it's not on the snake.
         while True:
             x = random.randint(0, WIDTH - 1)
@@ -48,7 +61,7 @@ class SnakeGame:
                 break
 
     def is_safe(self, point: Point, step: int = 0) -> bool:
-        """Checks if a given coordinate is safe (within bounds and not part of the snake body)."""
+        """Checks if a given coordinate is safe (within bounds and not part of snake body)."""
         if (
             step < len(self.snake)
             and point in self.snake[: len(self.snake) - step]
@@ -57,20 +70,22 @@ class SnakeGame:
             return False
         return True
 
-    def set_next_direction(self, direction: Direction):
+    def set_next_direction(self, direction: Direction) -> None:
         if direction.x == -self.direction.x and direction.y == -self.direction.y:
             return
         self.direction = direction
 
     @property
-    def snake_head(self) -> Point:
-        return self.snake[0]
+    def snake_head(self) -> Point | None:
+        return self.snake[0] if self.snake else None
 
-    def update_game(self):
-
-        if self.game_over:
+    def update_game(self) -> None:
+        if self._game_over:
             return
         """Updates the game state for the next frame."""
+        if not self.snake:
+            return
+
         head = self.snake[0]
         new_direction = self.direction
         possible_directions = []
@@ -81,7 +96,7 @@ class SnakeGame:
             next_head.x, next_head.y
         ):
             if len(possible_directions) == 0:
-                self.game_over = True
+                self._game_over = True
                 return
             new_direction = random.choice(possible_directions)
             possible_directions.remove(new_direction)
@@ -93,7 +108,7 @@ class SnakeGame:
 
         # Check for self-collision
         if new_head in self.snake:
-            self.game_over = True
+            self._game_over = True
             return
 
         self.snake.insert(0, new_head)  # Add new head
@@ -103,3 +118,18 @@ class SnakeGame:
             self._place_food()  # Place new food
         else:
             self.snake.pop()  # Remove tail if no food eaten
+
+    def get_game_state(self) -> dict[Point, Color]:
+        """Returns the current visual game state as a mapping of points to colors."""
+        state: dict[Point, Color] = {}
+        if self.food is not None:
+            state[self.food] = FOOD
+        for part in self.snake:
+            state[part] = SNAKE_BODY
+        if self.snake_head is not None:
+            state[self.snake_head] = SNAKE_HEAD
+        return state
+
+    def handle_player_input(self, input_data: Any) -> None:
+        if isinstance(input_data, Direction):
+            self.set_next_direction(input_data)
