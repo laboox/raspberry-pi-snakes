@@ -1,114 +1,21 @@
 from __future__ import annotations
 
+import random
 import signal
 import sys
 from typing import Any
 
 import pygame
 
-from snake import led_map_v2 as led_map
-from snake.const import (
-    BLOCKED,
-    DARK,
-    DOWN,
-    END_SEQUENCE_FLASH_SPEED,
-    END_SEQUENCE_LENGTH,
-    HEIGHT,
-    LEFT,
-    PORTALS,
-    REFRESH_RATE,
-    RIGHT,
-    SCALE,
-    SNAKE_DANCE_MODE,
-    UP,
-    WIDTH,
-    GameMode,
-)
-from snake.games.base_game import BaseGame
+from snake.const import DOWN, LEFT, REFRESH_RATE, RIGHT, UP, GameMode
+from snake.games.blocks import blocks_game
+from snake.games.blocks.agent import blocks_agent_move
 from snake.games.snake import snake_game
 from snake.games.snake.agent import snake_agent_move_bfs
-from snake.types import Color, Direction, Point
+from snake.renderer import Renderer
+from snake.types import Direction
 
-if SNAKE_DANCE_MODE == "RASPBERRYPI":
-    try:
-        import board
-        import neopixel_spi as neopixel
-    except (ImportError, NotImplementedError):
-        board = None
-        neopixel = None
-        SNAKE_DANCE_MODE = "DESKTOP"
-
-# Initializations
-pygame.init()
-if SNAKE_DANCE_MODE == "RASPBERRYPI":
-    # Services Initialization
-    PIXEL_ORDER = neopixel.GRB
-    spi = board.SPI()
-    pixels = neopixel.NeoPixel_SPI(
-        spi, led_map.NUM_PIXELS, pixel_order=PIXEL_ORDER, auto_write=False
-    )
-    screen = None
-else:
-    pixels = None
-    screen = pygame.display.set_mode((WIDTH * SCALE, HEIGHT * SCALE))
-
-
-def clear_screen() -> None:
-    if SNAKE_DANCE_MODE == "RASPBERRYPI" and pixels is not None:
-        pixels.fill((0, 0, 0))
-        pixels.show()
-    elif screen is not None:
-        screen.fill((0, 0, 0))
-        pygame.display.flip()
-
-
-def draw_game(game: BaseGame, opacity: float = 1.0) -> None:
-    """Draws the current game state from the game class to the display."""
-    game_state = game.get_game_state()
-
-    factor = opacity / 255.0 if opacity > 1.0 else max(0.0, min(1.0, opacity))
-
-    if factor != 1.0:
-        rendered_state = {
-            point: Color(
-                int(color.g * factor),
-                int(color.r * factor),
-                int(color.b * factor),
-            )
-            for point, color in game_state.items()
-        }
-    else:
-        rendered_state = game_state
-
-    if SNAKE_DANCE_MODE == "RASPBERRYPI":
-        if pixels is None:
-            return
-        pixels.fill(DARK)
-        for point, color in rendered_state.items():
-            if 0 <= point.y < HEIGHT and 0 <= point.x < WIDTH:
-                pixel_idx = led_map.MAP[point.y][point.x]
-                if pixel_idx != -1:
-                    pixels[pixel_idx] = color
-        pixels.show()
-    else:
-        if screen is None:
-            return
-        screen.fill(DARK)
-        for y in range(HEIGHT):
-            for x in range(WIDTH):
-                point = Point(x, y)
-                if led_map.is_blocked(x, y):
-                    pygame.draw.rect(screen, BLOCKED, (x * SCALE, y * SCALE, SCALE, SCALE))
-                elif point in led_map.PORTALS and point in PORTALS:
-                    pygame.draw.circle(
-                        screen,
-                        PORTALS[point],
-                        (x * SCALE + SCALE / 2, y * SCALE + SCALE / 2),
-                        SCALE / 2,
-                    )
-        for point, color in rendered_state.items():
-            pygame.draw.rect(screen, color, (point.x * SCALE, point.y * SCALE, SCALE, SCALE))
-        pygame.display.flip()
+renderer = Renderer()
 
 
 def handle_joystick_direction() -> Direction | None:
@@ -173,33 +80,20 @@ def handle_joystick_game_mode() -> GameMode | None:
     return None
 
 
-class EndSequence:
-    def __init__(self, init_time_ms: int, game: BaseGame):
-        self.init_time_ms = init_time_ms
-        self.game = game
-        self.done = False
-
-    def draw_frame(self, time_ms: int) -> None:
-        if time_ms - self.init_time_ms > END_SEQUENCE_LENGTH * 1000:
-            self.done = True
-        if self.done:
-            return
-        elapsed = (time_ms - self.init_time_ms) * 255 * 2 * END_SEQUENCE_FLASH_SPEED / 1000
-        i = abs(int(elapsed) % (255 * 2) - 255)
-        draw_game(self.game, opacity=i / 255.0)
+GAMES = [
+    ("snake", snake_game.SnakeGame(), snake_agent_move_bfs),
+    ("blocks", blocks_game.BlocksGame(), blocks_agent_move),
+]
 
 
-def game_loop(game: BaseGame | None = None) -> None:
+def game_loop() -> None:
     """Main game loop."""
-    if game is None:
-        game = snake_game.SnakeGame()
-        agent = snake_agent_move_bfs
+    _, game, agent = random.choice(GAMES)
 
     game.initialize_game()
 
-    game_mode = GameMode.PLAYER
+    game_mode = GameMode.AGENT
     last_update_tick = pygame.time.get_ticks()
-    end_sequence: EndSequence | None = None
     input_direction: Direction | None = None
     game_clock = pygame.time.Clock()
 
@@ -214,13 +108,11 @@ def game_loop(game: BaseGame | None = None) -> None:
                 if game_mode in (GameMode.AGENT, GameMode.ML_AGENT)
                 else game.player_speed * 1000
             )
-
             if game_mode in (GameMode.AGENT, GameMode.ML_AGENT):
                 if pygame.time.get_ticks() - last_update_tick >= update_interval:
                     agent_dir = agent(game)
                     game.handle_player_input(agent_dir)
                     game.update_game()
-                    draw_game(game)
                     last_update_tick = pygame.time.get_ticks()
             elif game_mode == GameMode.PLAYER:
                 if (tmp_dir := handle_joystick_direction()) is not None:
@@ -230,23 +122,19 @@ def game_loop(game: BaseGame | None = None) -> None:
                         game.handle_player_input(input_direction)
                         input_direction = None
                     game.update_game()
-                    draw_game(game)
                     last_update_tick = pygame.time.get_ticks()
+            renderer.draw(game.get_game_state())
         else:
-            if end_sequence is None:
-                last_update_tick = pygame.time.get_ticks()
-                end_sequence = EndSequence(last_update_tick, game)
-            end_sequence.draw_frame(pygame.time.get_ticks())
-            if end_sequence.done:
+            if renderer.end_game_effect(game.get_game_state()):
+                _, game, agent = random.choice(GAMES)
                 game.initialize_game()
-                end_sequence = None
                 last_update_tick = pygame.time.get_ticks()
 
         req_game_mode = handle_joystick_game_mode()
         if req_game_mode != game_mode and req_game_mode is not None:
             game_mode = req_game_mode
             game.initialize_game()
-            end_sequence = None
+            renderer.reset_end_game_effect()
             last_update_tick = pygame.time.get_ticks()
             continue
 
@@ -254,18 +142,18 @@ def game_loop(game: BaseGame | None = None) -> None:
 
 
 def exit_game(signum: int | None = None, frame: Any = None) -> None:
-    clear_screen()
+    renderer.clear()
     sys.exit(0)
 
 
 def main() -> None:
-    """Entry point for the snake game."""
+    """Entry point for the game."""
     signal.signal(signal.SIGTERM, exit_game)
     try:
         game_loop()
     except SystemExit:
-        clear_screen()
-        print("Thanks for playing Snake!")
+        renderer.clear()
+        print("Thanks for playing!")
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ echo "🐍 Building and deploying Snake Game to $HOSTNAME..."
 # Build the package
 echo "📦 Building Python package..."
 rm -rf dist
-python -m build --wheel
+uv build --wheel
 
 echo "📤 Copying package to $HOSTNAME..."
 scp dist/*.whl "$HOSTNAME":~/snake-deploy/

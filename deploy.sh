@@ -17,7 +17,7 @@ echo "🐍 Building and deploying Snake Game to $HOSTNAME..."
 
 # Build the package
 echo "📦 Building Python package..."
-python -m build --wheel
+uv build --wheel
 
 # Create deployment directory
 echo "📁 Creating deployment directory..."
