@@ -3,13 +3,15 @@ from __future__ import annotations
 import random
 import signal
 import sys
+from collections.abc import Callable
 from typing import Any
 
 import pygame
 
 from snake.const import DOWN, LEFT, REFRESH_RATE, RIGHT, UP, GameMode
-from snake.games.blocks import blocks_game
+from snake.games.base_game import BaseGame
 from snake.games.blocks.agent import blocks_agent_move
+from snake.games.blocks.blocks_game import BlocksGame
 from snake.games.snake import snake_game
 from snake.games.snake.agent import snake_agent_move_bfs
 from snake.renderer import Renderer
@@ -80,9 +82,9 @@ def handle_joystick_game_mode() -> GameMode | None:
     return None
 
 
-GAMES = [
+GAMES: list[tuple[str, BaseGame, Callable[[Any], Direction | None]]] = [
     ("snake", snake_game.SnakeGame(), snake_agent_move_bfs),
-    ("blocks", blocks_game.BlocksGame(), blocks_agent_move),
+    ("blocks", BlocksGame(), blocks_agent_move),
 ]
 
 
