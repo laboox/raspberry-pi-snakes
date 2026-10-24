@@ -8,7 +8,6 @@ from snake import led_map_v2 as led_map
 from snake.const import (
     BLOCKED,
     DARK,
-    END_SEQUENCE_FLASH_SPEED,
     END_SEQUENCE_LENGTH,
     HEIGHT,
     PORTALS,
@@ -201,6 +200,7 @@ class Renderer:
         game_or_state: dict[Point, Color] | BaseGame,
         time_ms: int | None = None,
         init_time_ms: int | None = None,
+        opacity: float = 1.0,
     ) -> bool:
         """
         Renders the end-game flashing sequence on the given game state.
@@ -220,7 +220,19 @@ class Renderer:
             self._end_effect_start_time = None
             return True
 
-        elapsed = (time_ms - start_time) * 255 * 2 * END_SEQUENCE_FLASH_SPEED / 1000
-        i = abs(int(elapsed) % (255 * 2) - 255)
-        self.draw(game_or_state, opacity=i / 255.0)
+        if isinstance(game_or_state, BaseGame):
+            game_state = game_or_state.get_game_state()
+        else:
+            game_state = game_or_state
+        flashing_state = {
+            point: Color(
+                int(color.g),
+                int(color.r),
+                int(color.b),
+                effect=Effect.FLASH,
+            )
+            for point, color in game_state.items()
+        }
+
+        self.draw(flashing_state, opacity=opacity)
         return False

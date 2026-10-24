@@ -19,23 +19,51 @@ from snake.types import Direction
 
 renderer = Renderer()
 
+# Keep the Joystick object alive: pygame closes the device when it is garbage
+# collected. On Linux (Raspberry Pi) a freshly opened joystick only learns button
+# state from evdev events that arrive after opening, so re-opening it every frame
+# means buttons always read as released. macOS polls values directly, so it hid this.
+_joystick: pygame.joystick.JoystickType | None = None
+
+
+def get_joystick() -> pygame.joystick.JoystickType | None:
+    global _joystick
+    if pygame.joystick.get_count() == 0:
+        _joystick = None
+    elif _joystick is None:
+        _joystick = pygame.joystick.Joystick(0)
+    return _joystick
+
+
+def get_start_back_buttons(joystick: pygame.joystick.JoystickType) -> tuple[int, int]:
+    """Returns (start, back) button indices for the given controller."""
+    if "Dual Action" in joystick.get_name():
+        # Logitech Dual Action (DirectInput layout)
+        return 9, 8
+    # XInput / Xbox layout, e.g. Logitech Gamepad F310 in X mode on the Raspberry Pi
+    return 7, 6
+
 
 def handle_joystick_direction() -> Direction | None:
-    if pygame.joystick.get_count() == 0:
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            return LEFT
-        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            return RIGHT
-        elif keys[pygame.K_UP] or keys[pygame.K_w]:
-            return UP
-        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            return DOWN
-        return None
+    joystick = get_joystick()
+    if joystick is not None and (direction := _joystick_direction(joystick)) is not None:
+        return direction
 
-    joystick = pygame.joystick.Joystick(0)
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+        return LEFT
+    elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+        return RIGHT
+    elif keys[pygame.K_UP] or keys[pygame.K_w]:
+        return UP
+    elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+        return DOWN
+    return None
+
+
+def _joystick_direction(joystick: pygame.joystick.JoystickType) -> Direction | None:
     # Use the hat (D-pad) instead of axes for direction
-    hat_x, hat_y = joystick.get_hat(0)
+    hat_x, hat_y = joystick.get_hat(0) if joystick.get_numhats() > 0 else (0, 0)
     if hat_x != 0 or hat_y != 0:
         # Use hat (D-pad) input if available
         if hat_x == -1:
@@ -46,7 +74,7 @@ def handle_joystick_direction() -> Direction | None:
             return UP
         elif hat_y == -1:
             return DOWN
-    else:
+    elif joystick.get_numaxes() >= 2:
         # Fall back to analog stick (axes)
         x_axis = joystick.get_axis(0)
         y_axis = joystick.get_axis(1)
@@ -63,34 +91,47 @@ def handle_joystick_direction() -> Direction | None:
     return None
 
 
-def handle_joystick_game_mode() -> GameMode | None:
-    if pygame.joystick.get_count() == 0:
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_1]:
-            return GameMode.PLAYER
-        if keys[pygame.K_2]:
-            return GameMode.AGENT
-        if keys[pygame.K_3]:
-            return GameMode.ML_AGENT
-        return None
+def handle_joystick_game_mode() -> [GameMode, str | None] | None:
+    joystick = get_joystick()
+    if joystick is not None:
+        start_button, back_button = get_start_back_buttons(joystick)
+        if joystick.get_button(start_button):
+            if joystick.get_button(5):
+                return GameMode.PLAYER, "Blocks"
+            return GameMode.PLAYER, "Snake"
+        if joystick.get_button(back_button):
+            if joystick.get_button(5):
+                return GameMode.AGENT, "Blocks"
+            return GameMode.AGENT, "Snake"
 
-    joystick = pygame.joystick.Joystick(0)
-    if joystick.get_button(7):
-        return GameMode.PLAYER
-    if joystick.get_button(6):
-        return GameMode.AGENT
-    return None
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_1]:
+        return GameMode.PLAYER, "Snake"
+    if keys[pygame.K_2]:
+        return GameMode.AGENT, "Snake"
+    return None, None
 
 
-GAMES: list[tuple[str, BaseGame, Callable[[Any], Direction | None]]] = [
-    ("snake", snake_game.SnakeGame(), snake_agent_move_bfs),
-    ("blocks", blocks_game.BlocksGame(), blocks_agent_move),
+def handle_joystick_opacity_change() -> float | None:
+    joystick = get_joystick()
+    if joystick is not None:
+        if joystick.get_button(4):
+            if joystick.get_axis(5) > 0.5:
+                return 0.2
+            elif joystick.get_axis(2) > 0.5:
+                return -0.2
+    return 0
+
+
+GAMES: list[tuple[BaseGame, Callable[[Any], Direction | None]]] = [
+    (snake_game.SnakeGame(), snake_agent_move_bfs),
+    (blocks_game.BlocksGame(), blocks_agent_move),
 ]
 
 
 def game_loop() -> None:
     """Main game loop."""
-    _, game, agent = random.choice(GAMES)
+    game, agent = random.choice(GAMES)
 
     game.initialize_game()
 
@@ -98,6 +139,9 @@ def game_loop() -> None:
     last_update_tick = pygame.time.get_ticks()
     input_direction: Direction | None = None
     game_clock = pygame.time.Clock()
+
+    default_opacity = 0.6
+    old_opacity_change = 0
 
     while True:
         for event in pygame.event.get():
@@ -125,20 +169,31 @@ def game_loop() -> None:
                         input_direction = None
                     game.update_game()
                     last_update_tick = pygame.time.get_ticks()
-            renderer.draw(game.get_game_state())
+            renderer.draw(game.get_game_state(), opacity=default_opacity)
         else:
-            if renderer.end_game_effect(game.get_game_state()):
-                _, game, agent = random.choice(GAMES)
+            if renderer.end_game_effect(game.get_game_state(), opacity=default_opacity):
+                game, agent = random.choice(GAMES)
                 game.initialize_game()
                 last_update_tick = pygame.time.get_ticks()
 
-        req_game_mode = handle_joystick_game_mode()
-        if req_game_mode != game_mode and req_game_mode is not None:
+        req_game_mode, game_name = handle_joystick_game_mode()
+        if (req_game_mode is not None and req_game_mode != game_mode) or (
+            game_name is not None and game.name != game_name
+        ):
+            for g, a in GAMES:
+                if g.name == game_name:
+                    game = g
+                    agent = a
             game_mode = req_game_mode
             game.initialize_game()
             renderer.reset_end_game_effect()
             last_update_tick = pygame.time.get_ticks()
             continue
+        opacity_diff = handle_joystick_opacity_change()
+        if opacity_diff != 0 and opacity_diff != old_opacity_change:
+            default_opacity = min(default_opacity + opacity_diff, 1.0)
+            default_opacity = max(default_opacity, 0.1)
+        old_opacity_change = opacity_diff
 
         game_clock.tick(REFRESH_RATE)
 

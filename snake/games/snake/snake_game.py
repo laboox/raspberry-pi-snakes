@@ -6,7 +6,14 @@ from typing import Any
 from snake import led_map_v2 as led_map
 from snake.const import DIRECTIONS, HEIGHT, RIGHT, UP, WIDTH
 from snake.games.base_game import BaseGame
-from snake.games.snake.const import FOOD, INITIAL_SNAKE_LENGTH, SNAKE_BODY, SNAKE_HEAD
+from snake.games.snake.const import (
+    AGENT_GAME_SPEED,
+    FOOD,
+    INITIAL_SNAKE_LENGTH,
+    PLAYER_GAME_SPEED,
+    SNAKE_BODY,
+    SNAKE_HEAD,
+)
 from snake.types import Color, Direction, Point
 
 
@@ -133,3 +140,13 @@ class SnakeGame(BaseGame):
     def handle_player_input(self, input_data: Any) -> None:
         if isinstance(input_data, Direction):
             self.set_next_direction(input_data)
+
+    @property
+    def player_speed(self) -> float:
+        """Player frame interval in seconds (lower is faster)."""
+        return PLAYER_GAME_SPEED
+
+    @property
+    def agent_speed(self) -> float:
+        """Agent frame interval in seconds (lower is faster)."""
+        return AGENT_GAME_SPEED
