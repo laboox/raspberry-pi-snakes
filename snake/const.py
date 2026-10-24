@@ -27,7 +27,6 @@ NUM_PIXELS = getattr(led_map, "NUM_PIXELS", 102)
 PLAYER_GAME_SPEED = 0.15  # Seconds per frame (lower is faster)
 AGENT_GAME_SPEED = 0.07  # Seconds per frame (lower is faster)
 REFRESH_RATE = 30  # Frames per second
-END_SEQUENCE_FLASH_SPEED = 1
 END_SEQUENCE_LENGTH = 5
 
 # Color constants
