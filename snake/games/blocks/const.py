@@ -18,15 +18,16 @@ DEFAULT_FALL_INTERVAL_TICKS = 4  # Gravity drop every 4 ticks (~0.48s)
 LINE_CLEAR_FLASH_TICKS = 6  # Ticks to flash full rows before collapse
 
 # Colors (GRB ordering for hardware compatibility)
-# Cyan, Yellow, Purple, Green, Red, Blue, Orange
+# Cyan, Pink, Purple, Green, Red, Blue, Light blue
+# (no yellow/orange: they blend with the background; no white: completed rows flash white)
 TETROMINO_COLORS: dict[str, Color] = {
     "I": Color(255, 0, 255),  # Cyan
-    "O": Color(255, 255, 0),  # Yellow
+    "O": Color(0, 255, 128),  # Pink
     "T": Color(0, 255, 255),  # Purple / Magenta
     "S": Color(255, 0, 0),  # Green
     "Z": Color(0, 255, 0),  # Red
     "J": Color(0, 0, 255),  # Blue
-    "L": Color(128, 255, 0),  # Orange
+    "L": Color(128, 0, 255),  # Light blue
 }
 
 LINE_CLEAR_COLOR = Color(255, 255, 255, Effect.FLASH)

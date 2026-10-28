@@ -218,15 +218,17 @@ class BlocksGame(BaseGame):
         # Remove cleared blocks
         surviving = {pt: col for pt, col in self.grid.items() if pt.y not in cleared_set}
 
-        # For each surviving block, drop it down into cleared rows in its column,
-        # stopping if an impenetrable pixel (-2) is below it.
-        for pt, col in surviving.items():
+        # For each surviving block (from highest y / bottom-most to top),
+        # drop it down into cleared rows in its column, stopping if an
+        # impenetrable pixel (-2) or another block in new_grid is below it.
+        for pt, col in sorted(surviving.items(), key=lambda item: item[0].y, reverse=True):
             new_y = pt.y
             for cy in sorted(self._cleared_lines):
                 if (
                     cy > new_y
                     and (new_y + 1 < HEIGHT)
                     and not led_map.is_impenetrable(pt.x, new_y + 1)
+                    and Point(pt.x, new_y + 1) not in new_grid
                 ):
                     new_y += 1
             new_grid[Point(pt.x, new_y)] = col

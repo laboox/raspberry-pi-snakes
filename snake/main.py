@@ -14,6 +14,7 @@ from snake.games.blocks import blocks_game
 from snake.games.blocks.agent import blocks_agent_move
 from snake.games.snake import snake_game
 from snake.games.snake.agent import snake_agent_move_bfs
+from snake.games.text import text_game
 from snake.renderer import Renderer
 from snake.types import Direction
 
@@ -95,6 +96,8 @@ def handle_joystick_game_mode() -> [GameMode, str | None] | None:
     joystick = get_joystick()
     if joystick is not None:
         start_button, back_button = get_start_back_buttons(joystick)
+        # if joystick.get_axis(5) > 0.5 and joystick.get_axis(2) > 0.5:
+        #     return GameMode.AGENT, "Text"
         if joystick.get_button(start_button):
             if joystick.get_button(5):
                 return GameMode.PLAYER, "Blocks"
@@ -126,12 +129,17 @@ def handle_joystick_opacity_change() -> float | None:
 GAMES: list[tuple[BaseGame, Callable[[Any], Direction | None]]] = [
     (snake_game.SnakeGame(), snake_agent_move_bfs),
     (blocks_game.BlocksGame(), blocks_agent_move),
+    (text_game.TextGame("BADDIE DETECTED"), lambda _: None),
 ]
+
+
+def select_random_game():
+    return random.choice(GAMES[:2])
 
 
 def game_loop() -> None:
     """Main game loop."""
-    game, agent = random.choice(GAMES)
+    game, agent = select_random_game()
 
     game.initialize_game()
 
@@ -172,7 +180,7 @@ def game_loop() -> None:
             renderer.draw(game.get_game_state(), opacity=default_opacity)
         else:
             if renderer.end_game_effect(game.get_game_state(), opacity=default_opacity):
-                game, agent = random.choice(GAMES)
+                game, agent = select_random_game()
                 game.initialize_game()
                 last_update_tick = pygame.time.get_ticks()
 

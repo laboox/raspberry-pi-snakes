@@ -132,6 +132,33 @@ class TestBlocksGame(unittest.TestCase):
             self.game.update_game()
         self.assertEqual(self.game._line_clear_ticks, 0)
 
+    def test_line_clear_does_not_overwrite_blocks_above_impenetrable_floor(self) -> None:
+        # Row 8 has playable columns 3..10 and impenetrable (-2) at column 0.
+        # Place two stacked blocks in column 0 at y=6 (top_color) and y=7 (bottom_color),
+        # deliberately inserting y=6 first into the dict.
+        top_color = Color(10, 20, 30)
+        bottom_color = Color(40, 50, 60)
+        self.game.grid[Point(0, 6)] = top_color
+        self.game.grid[Point(0, 7)] = bottom_color
+
+        # Also place a block above a playable column at (3, 7)
+        falling_color = Color(70, 80, 90)
+        self.game.grid[Point(3, 7)] = falling_color
+
+        # Fill row 8 across all playable columns (3..10) and trigger line clear collapse
+        for x in range(3, 11):
+            self.game.grid[Point(x, 8)] = Color(100, 100, 100)
+        self.game._cleared_lines = [8]
+        self.game._finish_line_clear()
+
+        # In column 0, (0, 8) is impenetrable (-2), so (0, 7) cannot fall and
+        # (0, 6) must not overwrite (0, 7).
+        self.assertEqual(self.game.grid.get(Point(0, 7)), bottom_color)
+        self.assertEqual(self.game.grid.get(Point(0, 6)), top_color)
+        # In column 3, (3, 8) was cleared and is playable, so (3, 7) falls to (3, 8).
+        self.assertEqual(self.game.grid.get(Point(3, 8)), falling_color)
+        self.assertNotIn(Point(3, 7), self.game.grid)
+
     def test_game_over(self) -> None:
         # Fill the entire top row with blocks
         for x in range(WIDTH):
